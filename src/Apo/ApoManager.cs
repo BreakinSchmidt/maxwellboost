@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -39,8 +40,7 @@ namespace MaxwellBoost.Apo
                 }
 
                 var deviceLine = $"Device: \"{deviceName}\" capture";
-                var preampLine = $"Preamp: {gainDb:0.0} dB";
-
+                var preampLine = string.Format(CultureInfo.InvariantCulture, "Preamp: {0:0.0} dB", gainDb);
                 var targetBlock = $"{deviceLine}\n{preampLine}";
 
                 string existingContent = string.Empty;
@@ -49,29 +49,31 @@ namespace MaxwellBoost.Apo
                     existingContent = File.ReadAllText(configPath);
                 }
 
-                // Check if device block is already perfectly configured
-                if (existingContent.Contains(deviceLine, StringComparison.OrdinalIgnoreCase) &&
-                    existingContent.Contains(preampLine, StringComparison.OrdinalIgnoreCase))
+                // Check if device block already has exact target preamp
+                var exactRegex = new Regex($@"Device:\s*""{Regex.Escape(deviceName)}""\s+capture\s*[\r\n]+\s*{Regex.Escape(preampLine)}", RegexOptions.IgnoreCase);
+                if (exactRegex.IsMatch(existingContent))
                 {
-                    _logger.Debug("Equalizer APO config.txt is already up-to-date.");
+                    _logger.Debug($"Equalizer APO config.txt already has [{preampLine}] for [{deviceName}].");
                     return true;
                 }
 
-                // If device line exists with different preamp, replace it
-                var devicePattern = new Regex($@"{Regex.Escape(deviceLine)}\s*\r?\n\s*Preamp:[^\r\n]*", RegexOptions.IgnoreCase);
+                // Pattern to match Device line followed by any Preamp line
+                var deviceWithPreampPattern = new Regex($@"(Device:\s*""{Regex.Escape(deviceName)}""\s+capture\s*[\r\n]+)\s*Preamp:[^\r\n]*", RegexOptions.IgnoreCase);
+
                 string newContent;
-                if (devicePattern.IsMatch(existingContent))
+                if (deviceWithPreampPattern.IsMatch(existingContent))
                 {
-                    newContent = devicePattern.Replace(existingContent, targetBlock);
+                    newContent = deviceWithPreampPattern.Replace(existingContent, $"$1{preampLine}");
                 }
                 else if (existingContent.Contains(deviceLine, StringComparison.OrdinalIgnoreCase))
                 {
-                    // If device line is there without immediately followed preamp
-                    newContent = $"{targetBlock}\n\n{existingContent}";
+                    // Device line is present but without immediate Preamp line
+                    var deviceOnlyPattern = new Regex($@"Device:\s*""{Regex.Escape(deviceName)}""\s+capture", RegexOptions.IgnoreCase);
+                    newContent = deviceOnlyPattern.Replace(existingContent, targetBlock, 1);
                 }
                 else
                 {
-                    // Prepend device-specific block to ensure high priority
+                    // Prepend target block to top of config file
                     newContent = string.IsNullOrWhiteSpace(existingContent)
                         ? targetBlock + Environment.NewLine
                         : $"{targetBlock}\n\n{existingContent.Trim()}";
@@ -102,38 +104,35 @@ namespace MaxwellBoost.Apo
 
             try
             {
-                // Check FxProperties
-                using (var key = Registry.LocalMachine.OpenSubKey(fxKeyPath, writable: false))
+                using var key = Registry.LocalMachine.OpenSubKey(fxKeyPath, writable: false);
+                if (key != null)
                 {
-                    if (key != null)
+                    var sfxVal = key.GetValue(SfxKeyName)?.ToString();
+                    var lfxVal = key.GetValue(LfxKeyName)?.ToString();
+
+                    var hasApo = string.Equals(sfxVal, EqualizerApoClsid, StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(lfxVal, EqualizerApoClsid, StringComparison.OrdinalIgnoreCase);
+
+                    if (hasApo)
                     {
-                        var sfxVal = key.GetValue(SfxKeyName)?.ToString();
-                        var lfxVal = key.GetValue(LfxKeyName)?.ToString();
-
-                        var hasApo = string.Equals(sfxVal, EqualizerApoClsid, StringComparison.OrdinalIgnoreCase) ||
-                                     string.Equals(lfxVal, EqualizerApoClsid, StringComparison.OrdinalIgnoreCase);
-
-                        if (hasApo)
-                        {
-                            _logger.Info($"APO registry hooks verified for endpoint {guid}.");
-                        }
-                        else
-                        {
-                            _logger.Warn($"APO hook not registered in FxProperties for endpoint {guid}. Attempting registration...");
-                            TryWriteRegistryHooks(fxKeyPath, childApoPath);
-                        }
+                        _logger.Info($"APO registry hooks verified for endpoint {guid}.");
                     }
                     else
                     {
-                        _logger.Warn($"FxProperties registry key not found for {guid}.");
+                        _logger.Warn($"APO hook not registered in FxProperties for endpoint {guid}. Attempting registration...");
+                        TryWriteRegistryHooks(fxKeyPath, childApoPath);
                     }
+                }
+                else
+                {
+                    _logger.Warn($"FxProperties registry key not found for {guid}.");
                 }
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.Warn($"Could not inspect registry keys (requires elevation if missing): {ex.Message}");
+                _logger.Warn($"Could not inspect registry keys: {ex.Message}");
                 return false;
             }
         }
@@ -177,7 +176,6 @@ namespace MaxwellBoost.Apo
                         try
                         {
                             var emptyGuid = Guid.Empty;
-                            // 0 = AUDCLNT_SHAREMODE_SHARED, 0 = StreamFlags, 1000000 = 100ms
                             hr = audioClient.Initialize(0, 0, 1000000, 0, pFormat, ref emptyGuid);
                             if (hr == 0)
                             {

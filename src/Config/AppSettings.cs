@@ -57,6 +57,47 @@ namespace MaxwellBoost.Config
             return new AppSettings();
         }
 
+        public bool Reload()
+        {
+            try
+            {
+                var filePath = GetConfigFilePath();
+                if (File.Exists(filePath))
+                {
+                    var json = File.ReadAllText(filePath);
+                    var settings = JsonSerializer.Deserialize<AppSettings>(json, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        ReadCommentHandling = JsonCommentHandling.Skip
+                    });
+                    if (settings != null)
+                    {
+                        CopyFrom(settings);
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                // Read error (e.g. file temporarily locked by editor)
+            }
+            return false;
+        }
+
+        public void CopyFrom(AppSettings other)
+        {
+            DeviceNameFilter = other.DeviceNameFilter;
+            GainDb = other.GainDb;
+            EnforceVolume = other.EnforceVolume;
+            TargetVolumeScalar = other.TargetVolumeScalar;
+            LogDirectory = other.LogDirectory;
+            LogFileName = other.LogFileName;
+            LogRetentionDays = other.LogRetentionDays;
+            ShowNotifications = other.ShowNotifications;
+            PollingFallbackSeconds = other.PollingFallbackSeconds;
+            EqualizerApoConfigPath = other.EqualizerApoConfigPath;
+        }
+
         public void Save()
         {
             try

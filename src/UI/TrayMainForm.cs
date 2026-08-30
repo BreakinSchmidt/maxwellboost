@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Win32;
 using MaxwellBoost.Config;
@@ -25,6 +26,9 @@ namespace MaxwellBoost.UI
         private readonly ToolStripMenuItem _volumeMenuItem;
         private readonly ToolStripMenuItem _startupMenuItem;
 
+        private FileSystemWatcher? _configWatcher;
+        private System.Threading.Timer? _configDebounceTimer;
+
         public TrayMainForm(
             AppSettings settings,
             DailyRotatingLogger logger,
@@ -41,6 +45,9 @@ namespace MaxwellBoost.UI
             Opacity = 0;
             Size = new Size(0, 0);
             Location = new Point(-3000, -3000);
+
+            // Force native Win32 window handle creation immediately
+            _ = this.Handle;
 
             _contextMenu = new ContextMenuStrip();
 
@@ -64,6 +71,7 @@ namespace MaxwellBoost.UI
             var refreshItem = new ToolStripMenuItem("⚡ Re-apply Boost Now", null, (s, e) =>
             {
                 _logger.Info("Manual boost re-apply triggered by user from tray menu.");
+                _settings.Reload();
                 _watcher.SyncCurrentState(logStateChanges: true);
             });
             _contextMenu.Items.Add(refreshItem);
@@ -96,29 +104,65 @@ namespace MaxwellBoost.UI
 
             _notifyIcon.DoubleClick += (s, e) => OpenLogFile();
 
-            FormClosing += (s, e) =>
-            {
-                _logger.Info($"TrayMainForm FormClosing triggered. CloseReason: {e.CloseReason}, Cancel: {e.Cancel}");
-            };
-
-            FormClosed += (s, e) =>
-            {
-                _logger.Info($"TrayMainForm FormClosed triggered. CloseReason: {e.CloseReason}");
-            };
-
             // Subscribe to watcher events with thread-safe UI invocation
             _watcher.OnDeviceBoosted += (dev, vol) => SafeInvoke(() => HandleDeviceBoosted(dev, vol));
             _watcher.OnDeviceDisconnected += (devName) => SafeInvoke(() => HandleDeviceDisconnected(devName));
             _watcher.OnStatusChanged += (status) => SafeInvoke(() => HandleStatusChanged(status));
 
+            // Start watching appsettings.json for hot-reload
+            SetupConfigFileWatcher();
+
             _logger.Info("Tray application initialized.");
+
+            // Initial sync to set status icon
+            _watcher.TriggerSync(delayMs: 200);
         }
 
-        protected override void OnHandleCreated(EventArgs e)
+        private void SetupConfigFileWatcher()
         {
-            base.OnHandleCreated(e);
-            _logger.Info($"TrayMainForm native handle created: 0x{Handle:X8}");
-            _watcher.TriggerSync(delayMs: 200);
+            try
+            {
+                var configPath = AppSettings.GetConfigFilePath();
+                var configDir = Path.GetDirectoryName(configPath);
+                var configFileName = Path.GetFileName(configPath);
+
+                if (!string.IsNullOrEmpty(configDir) && Directory.Exists(configDir))
+                {
+                    _configWatcher = new FileSystemWatcher(configDir, configFileName)
+                    {
+                        NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName,
+                        EnableRaisingEvents = true
+                    };
+
+                    _configWatcher.Changed += (s, e) => OnConfigFileChanged();
+                    _configWatcher.Created += (s, e) => OnConfigFileChanged();
+                    _logger.Info($"Enabled automatic settings hot-reload watcher on: {configPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"Could not initialize config file watcher: {ex.Message}");
+            }
+        }
+
+        private void OnConfigFileChanged()
+        {
+            _configDebounceTimer?.Dispose();
+            _configDebounceTimer = new System.Threading.Timer(_ =>
+            {
+                try
+                {
+                    if (_settings.Reload())
+                    {
+                        _logger.Info($"Detected change in appsettings.json. Hot-reloaded settings! Target Gain: +{_settings.GainDb} dB.");
+                        _watcher.SyncCurrentState(logStateChanges: true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn($"Hot-reload error: {ex.Message}");
+                }
+            }, null, 300, Timeout.Infinite);
         }
 
         private void SafeInvoke(Action action)
@@ -300,6 +344,8 @@ namespace MaxwellBoost.UI
             _notifyIcon.Icon?.Dispose();
             _notifyIcon.Dispose();
             _watcher.Dispose();
+            _configWatcher?.Dispose();
+            _configDebounceTimer?.Dispose();
             Close();
             Application.Exit();
         }
@@ -313,6 +359,8 @@ namespace MaxwellBoost.UI
                 _notifyIcon.Dispose();
                 _contextMenu.Dispose();
                 _watcher.Dispose();
+                _configWatcher?.Dispose();
+                _configDebounceTimer?.Dispose();
             }
             base.Dispose(disposing);
         }

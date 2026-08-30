@@ -14,6 +14,14 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host "         Building & Publishing MaxwellBoost       " -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 
+# Stop running instances to release file locks on publish directory
+$running = Get-Process -Name "MaxwellBoost" -ErrorAction SilentlyContinue
+if ($running) {
+    Write-Host "Stopping running instance of MaxwellBoost to release file lock..." -ForegroundColor Yellow
+    $running | Stop-Process -Force
+    Start-Sleep -Milliseconds 500
+}
+
 $projectPath = "$PSScriptRoot\..\src\MaxwellBoost.csproj"
 
 Write-Host "Publishing MaxwellBoost ($Configuration) to $OutputDir..." -ForegroundColor Yellow
