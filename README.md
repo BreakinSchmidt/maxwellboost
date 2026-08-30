@@ -7,7 +7,7 @@
 
 An intelligent, zero-latency background service and system tray monitor for the **Audeze Maxwell** wireless headset microphone on Windows.
 
-MaxwellBoost automatically and persistently applies **+20 dB digital gain boost** to your microphone directly inside the Windows Audio Engine, completely eliminating volume drops across **system reboots**, **headset power cycles**, and **USB reconnects**.
+MaxwellBoost automatically and persistently applies **+20 dB digital gain boost** (customizable on-the-fly via a tray slider or settings) to your microphone directly inside the Windows Audio Engine, completely eliminating volume drops across **system reboots**, **headset power cycles**, and **USB reconnects**.
 
 ---
 
@@ -30,7 +30,7 @@ The **Audeze Maxwell** is an industry-leading wireless planar magnetic headset, 
 The millisecond your Audeze Maxwell powers on or reconnects, MaxwellBoost:
 1. **Identifies the active capture endpoint GUID**.
 2. **Automatically hooks the Audio Processing Object (APO)** in the Windows Registry (`FxProperties`).
-3. **Synchronizes the preamp gain** (+20.0 dB) in the APO configuration.
+3. **Synchronizes the preamp gain** (+20.0 dB by default) in the APO configuration.
 4. **Warms up the audio stream** to force the Windows Audio Service (`audiosrv`) to immediately bind the APO pipeline.
 5. **Locks the Windows recording volume** to 100% (scalar 1.0) and unmutes the device if muted.
 6. **Logs the operation** with microsecond timestamps to `C:\logs\maxwell.log` with safe 7-day daily rotation.
@@ -47,7 +47,7 @@ The millisecond your Audeze Maxwell powers on or reconnects, MaxwellBoost:
 |                                                     v                                         |
 |                                    [ Audio Processing Object (APO) ] <---+                    |
 |                                       - EqualizerAPO.dll                 | (Auto-Hooked)      |
-|                                       - Preamp: +20 dB                   |                    |
+|                                       - Preamp: +20 dB (Configurable)    |                    |
 |                                                     |                    |                    |
 |                                                     v                    |                    |
 |                                       [ Windows Audio Service ]          |                    |
@@ -73,7 +73,8 @@ The millisecond your Audeze Maxwell powers on or reconnects, MaxwellBoost:
 |  +------------------------------+                        |                                    |
 |  | Windows System Tray Monitor  | <----------------------+                                    |
 |  | - 🟢 Green / ⚪ Grey status  |                                                             |
-|  | - Balloon Toast Notifications|                                                             |
+|  | - 🎚️ Interactive Gain Slider |                                                             |
+|  | - 🔔 Notification Toggle     |                                                             |
 |  | - Quick Control Menu         |                                                             |
 |  +------------------------------+                                                             |
 |               |                                                                               |
@@ -92,16 +93,19 @@ The millisecond your Audeze Maxwell powers on or reconnects, MaxwellBoost:
 - **⚡ 0 ms Added Latency**: Processes audio natively in the Windows Audio Engine pipeline without virtual audio cables (e.g. VB-Cable) or user-space buffering delays.
 - **🎯 Zero App Reconfiguration**: All applications (Discord, Zoom, Teams, OBS, Games) capture directly from `Microphone (Chat-Audeze Maxwell)`.
 - **🔄 Auto-Reconnect & Reboot Persistence**: Automatically detects headset power-on and wake events in milliseconds.
+- **🎚️ Interactive Quick Menu Gain Slider**:
+  - Drag the built-in slider (0 to 40 dB) right inside the tray context menu to adjust your gain instantly.
+  - Or click **Set Custom Gain (dB)...** to type any precise decimal value (e.g. `22.5` dB).
+- **🔔 Notification Toggle**: Enable or disable Windows toast notifications directly from the tray right-click menu (`Show Toast Notifications [✓]`).
 - **🖥️ System Tray Monitor**:
   - 🟢 **Green Microphone**: Maxwell is Connected & Boosted (+20 dB active, 100% volume).
   - ⚪ **Grey Microphone**: Headset is Off / Standby Watcher active.
   - Right-click menu for instant boost reload, opening logs, editing settings, or toggling Windows startup.
-  - Optional Windows balloon notifications when the headset connects/disconnects.
+- **🔥 Live Settings Hot-Reload**: Automatically detects any manual edits to `appsettings.json` and updates the audio gain immediately without restarting the app.
 - **🛡️ Safe 7-Day Daily Rotating Logger**:
   - Automatically archives previous days to `maxwell-YYYY-MM-DD.log`.
   - Automatically prunes `maxwell-*.log` files older than 7 days.
   - **Strictly isolated**: Safely ignores all non-Maxwell files in `C:\logs`.
-- **🎛️ Fully Configurable**: Adjust gain (e.g. `20.0` dB), volume scalar (`1.0`), log directory, or target device name in `appsettings.json`.
 
 ---
 
@@ -122,7 +126,7 @@ The millisecond your Audeze Maxwell powers on or reconnects, MaxwellBoost:
 
 ### Option A: Automatic Installation (Recommended)
 1. Clone or download this repository to your machine (e.g. `D:\code\maxwellboost`).
-2. Open **PowerShell** as Administrator or Standard User in the project directory.
+2. Open **PowerShell** in the project directory.
 3. Run the startup installer:
    ```powershell
    powershell -ExecutionPolicy Bypass -File .\scripts\install-startup.ps1
@@ -140,6 +144,60 @@ The millisecond your Audeze Maxwell powers on or reconnects, MaxwellBoost:
    # 2. Run the application
    .\publish\MaxwellBoost.exe
    ```
+
+---
+
+## 🎛️ Tray Quick Menu
+
+Right-click the microphone icon in your Windows notification area (near the clock) to access:
+
+| Menu Item | Action |
+|---|---|
+| **Status / Volume** | Live connection state (e.g. `Connected (+20 dB)`) and Windows endpoint volume level |
+| **Gain Slider (0–40 dB)** | Drag to increase or decrease mic volume gain in real time |
+| **✏️ Set Custom Gain...** | Opens an input dialog to specify any exact gain value (e.g. `18.5` dB) |
+| **⚡ Re-apply Boost Now** | Forces an immediate scan, settings reload, and APO stream re-bind |
+| **📄 Open Log File** | Opens `C:\logs\maxwell.log` in your default text editor |
+| **⚙️ Open Settings** | Opens `appsettings.json` for manual configuration |
+| **Show Toast Notifications [✓]** | Toggles Windows connect/disconnect balloon toast popups on or off |
+| **Run on Windows Startup [✓]** | Toggles automatic launch on Windows login |
+| **❌ Exit MaxwellBoost** | Disables tray icon and cleanly exits |
+
+---
+
+## ⚙️ Configuration Reference (`appsettings.json`)
+
+Configuration is stored in `publish\Config\appsettings.json` (or `src\Config\appsettings.json`):
+
+```json
+{
+  "DeviceNameFilter": "Chat-Audeze Maxwell",
+  "GainDb": 20.0,
+  "EnforceVolume": true,
+  "TargetVolumeScalar": 1.0,
+  "LogDirectory": "C:\\logs",
+  "LogFileName": "maxwell.log",
+  "LogRetentionDays": 7,
+  "ShowNotifications": true,
+  "PollingFallbackSeconds": 10,
+  "EqualizerApoConfigPath": "C:\\Program Files\\EqualizerAPO\\config\\config.txt"
+}
+```
+
+### Complete Setting Descriptions
+
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| **`DeviceNameFilter`** | `string` | `"Chat-Audeze Maxwell"` | Case-insensitive substring filter used to locate the Audeze Maxwell capture endpoint. If your device appears under a slightly different name in Windows Sound Settings, adjust this filter accordingly. |
+| **`GainDb`** | `double` | `20.0` | Digital gain boost in decibels applied to your microphone in Equalizer APO. `20.0` dB represents a $10.0\times$ linear amplitude boost. Adjust between `0.0` and `40.0` dB based on your preference. |
+| **`EnforceVolume`** | `bool` | `true` | When `true`, automatically locks the Windows Recording Volume slider to `TargetVolumeScalar` whenever the headset is detected or power-cycled, preventing third-party apps (e.g. Discord auto-gain) from pulling your volume down. |
+| **`TargetVolumeScalar`** | `float` | `1.0` | The target master volume level in Windows CoreAudio between `0.0` (0% / muted) and `1.0` (100% / 0 dB attenuation). Recommended to leave at `1.0`. |
+| **`LogDirectory`** | `string` | `"C:\\logs"` | Directory where operational logs are written. If the directory does not exist, MaxwellBoost will create it automatically. |
+| **`LogFileName`** | `string` | `"maxwell.log"` | The active log file name. All connection events, gain updates, and errors are recorded here. |
+| **`LogRetentionDays`** | `int` | `7` | Number of days to retain rotated daily log archives (`maxwell-YYYY-MM-DD.log`). Files matching this pattern older than `LogRetentionDays` are automatically cleaned up at midnight. |
+| **`ShowNotifications`** | `bool` | `true` | When `true`, displays Windows balloon toast notifications when the Audeze Maxwell headset connects (boost active) or disconnects (standby). Can also be toggled directly from the tray menu. |
+| **`PollingFallbackSeconds`** | `int` | `10` | Frequency in seconds for secondary background state verification. Ensures device reconnection is caught even if Windows COM event notifications are dropped during OS sleep or hibernate resume. |
+| **`EqualizerApoConfigPath`** | `string` | `@"C:\Program Files\EqualizerAPO\config\config.txt"` | Absolute file path to the Equalizer APO `config.txt` file where MaxwellBoost injects the device preamp directive. |
 
 ---
 
@@ -165,37 +223,6 @@ or directly:
 | `--status`, `-s` | Checks current Maxwell connection state and volume level |
 | `--console`, `-c` | Runs interactive continuous watcher with live console logging |
 | `--help`, `-h` | Displays CLI help |
-
----
-
-## ⚙️ Configuration (`appsettings.json`)
-
-Configuration is stored in `publish\Config\appsettings.json` (or `src\Config\appsettings.json`):
-
-```json
-{
-  "DeviceNameFilter": "Chat-Audeze Maxwell",
-  "GainDb": 20.0,
-  "EnforceVolume": true,
-  "TargetVolumeScalar": 1.0,
-  "LogDirectory": "C:\\logs",
-  "LogFileName": "maxwell.log",
-  "LogRetentionDays": 7,
-  "ShowNotifications": true,
-  "PollingFallbackSeconds": 10,
-  "EqualizerApoConfigPath": "C:\\Program Files\\EqualizerAPO\\config\\config.txt"
-}
-```
-
-### Settings Reference
-- **`DeviceNameFilter`** *(string)*: Substring used to identify your Audeze Maxwell microphone capture endpoint (default: `"Chat-Audeze Maxwell"`).
-- **`GainDb`** *(double)*: Digital boost in decibels applied to the microphone (default: `20.0`).
-- **`EnforceVolume`** *(bool)*: Automatically sets the Windows microphone recording volume to 100% (default: `true`).
-- **`TargetVolumeScalar`** *(float)*: Target master volume scalar between `0.0` (0%) and `1.0` (100%) (default: `1.0`).
-- **`LogDirectory`** *(string)*: Directory where log files are written (default: `"C:\\logs"`).
-- **`LogRetentionDays`** *(int)*: Number of days to retain rotated daily log archives `maxwell-YYYY-MM-DD.log` (default: `7`).
-- **`ShowNotifications`** *(bool)*: Shows Windows balloon toast notifications when the headset connects or disconnects (default: `true`).
-- **`PollingFallbackSeconds`** *(int)*: Periodic fallback sync interval in seconds for sleep/hibernate resume (default: `10`).
 
 ---
 

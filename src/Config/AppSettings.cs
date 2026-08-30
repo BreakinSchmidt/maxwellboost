@@ -79,7 +79,7 @@ namespace MaxwellBoost.Config
             }
             catch
             {
-                // Read error (e.g. file temporarily locked by editor)
+                // Read error
             }
             return false;
         }
@@ -117,7 +117,7 @@ namespace MaxwellBoost.Config
             }
             catch
             {
-                // Log or ignore if cannot save
+                // Ignore save errors if locked
             }
         }
     }

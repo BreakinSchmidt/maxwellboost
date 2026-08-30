@@ -24,6 +24,8 @@ namespace MaxwellBoost.UI
         private readonly ContextMenuStrip _contextMenu;
         private readonly ToolStripMenuItem _statusMenuItem;
         private readonly ToolStripMenuItem _volumeMenuItem;
+        private readonly ToolStripGainSlider _gainSlider;
+        private readonly ToolStripMenuItem _notificationsMenuItem;
         private readonly ToolStripMenuItem _startupMenuItem;
 
         private FileSystemWatcher? _configWatcher;
@@ -54,7 +56,7 @@ namespace MaxwellBoost.UI
             // 1. Title Item
             var titleItem = new ToolStripMenuItem("MaxwellBoost v1.0")
             {
-                Font = new Font(Control.DefaultFont, FontStyle.Bold),
+                Font = new Font(Control.DefaultFont.FontFamily, 9f, FontStyle.Bold),
                 Enabled = false
             };
             _contextMenu.Items.Add(titleItem);
@@ -67,7 +69,16 @@ namespace MaxwellBoost.UI
             _contextMenu.Items.Add(_volumeMenuItem);
             _contextMenu.Items.Add(new ToolStripSeparator());
 
-            // 3. Actions
+            // 3. Interactive Gain Slider (0 to 40 dB)
+            _gainSlider = new ToolStripGainSlider(_settings, OnSliderGainChanged);
+            _contextMenu.Items.Add(_gainSlider);
+
+            var customGainItem = new ToolStripMenuItem("✏️ Set Custom Gain (dB)...", null, (s, e) => OpenCustomGainDialog());
+            _contextMenu.Items.Add(customGainItem);
+
+            _contextMenu.Items.Add(new ToolStripSeparator());
+
+            // 4. Quick Actions
             var refreshItem = new ToolStripMenuItem("⚡ Re-apply Boost Now", null, (s, e) =>
             {
                 _logger.Info("Manual boost re-apply triggered by user from tray menu.");
@@ -82,14 +93,20 @@ namespace MaxwellBoost.UI
             var openConfigItem = new ToolStripMenuItem("⚙️ Open Settings", null, (s, e) => OpenConfigFile());
             _contextMenu.Items.Add(openConfigItem);
 
-            // 4. Startup Toggle
+            _contextMenu.Items.Add(new ToolStripSeparator());
+
+            // 5. Toggles (Notifications & Startup)
+            _notificationsMenuItem = new ToolStripMenuItem("Show Toast Notifications", null, (s, e) => ToggleNotifications());
+            _notificationsMenuItem.Checked = _settings.ShowNotifications;
+            _contextMenu.Items.Add(_notificationsMenuItem);
+
             _startupMenuItem = new ToolStripMenuItem("Run on Windows Startup", null, (s, e) => ToggleStartup());
             _startupMenuItem.Checked = IsStartupEnabled();
             _contextMenu.Items.Add(_startupMenuItem);
 
             _contextMenu.Items.Add(new ToolStripSeparator());
 
-            // 5. Exit
+            // 6. Exit
             var exitItem = new ToolStripMenuItem("❌ Exit MaxwellBoost", null, (s, e) => ExitApp());
             _contextMenu.Items.Add(exitItem);
 
@@ -116,6 +133,38 @@ namespace MaxwellBoost.UI
 
             // Initial sync to set status icon
             _watcher.TriggerSync(delayMs: 200);
+        }
+
+        private void OnSliderGainChanged(double newGain)
+        {
+            if (Math.Abs(_settings.GainDb - newGain) < 0.01) return;
+
+            _logger.Info($"User adjusted gain slider in quick menu to +{newGain:0.#} dB.");
+            _settings.GainDb = newGain;
+            _settings.Save();
+            _watcher.SyncCurrentState(logStateChanges: true);
+        }
+
+        private void OpenCustomGainDialog()
+        {
+            using var dialog = new CustomGainDialog(_settings.GainDb);
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                var newGain = dialog.SelectedGain;
+                _logger.Info($"User entered custom gain in dialog: +{newGain:0.#} dB.");
+                _settings.GainDb = newGain;
+                _gainSlider.SliderControl.SetGain(newGain);
+                _settings.Save();
+                _watcher.SyncCurrentState(logStateChanges: true);
+            }
+        }
+
+        private void ToggleNotifications()
+        {
+            _settings.ShowNotifications = !_settings.ShowNotifications;
+            _notificationsMenuItem.Checked = _settings.ShowNotifications;
+            _settings.Save();
+            _logger.Info($"Toast notifications toggled to: {(_settings.ShowNotifications ? "Enabled" : "Disabled")}");
         }
 
         private void SetupConfigFileWatcher()
@@ -155,6 +204,11 @@ namespace MaxwellBoost.UI
                     if (_settings.Reload())
                     {
                         _logger.Info($"Detected change in appsettings.json. Hot-reloaded settings! Target Gain: +{_settings.GainDb} dB.");
+                        SafeInvoke(() =>
+                        {
+                            _gainSlider.SliderControl.SetGain(_settings.GainDb);
+                            _notificationsMenuItem.Checked = _settings.ShowNotifications;
+                        });
                         _watcher.SyncCurrentState(logStateChanges: true);
                     }
                 }
@@ -199,6 +253,7 @@ namespace MaxwellBoost.UI
                 _notifyIcon.Text = TruncateTip($"MaxwellBoost: Active (+{_settings.GainDb:0.#} dB)");
                 _statusMenuItem.Text = $"Status: Connected (+{_settings.GainDb:0.#} dB)";
                 _volumeMenuItem.Text = $"Volume: {volume:P0} (Enforced)";
+                _gainSlider.SliderControl.SetGain(_settings.GainDb);
 
                 if (_settings.ShowNotifications)
                 {
