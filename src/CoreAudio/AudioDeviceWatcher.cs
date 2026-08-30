@@ -25,7 +25,7 @@ namespace MaxwellBoost.CoreAudio
         public AudioDeviceInfo? CurrentMaxwellDevice { get; private set; }
         public float CurrentVolumeLevel { get; private set; }
 
-        public event Action<AudioDeviceInfo, float>? OnDeviceBoosted;
+        public event Action<AudioDeviceInfo, float, bool>? OnDeviceBoosted;
         public event Action<string>? OnDeviceDisconnected;
         public event Action<string>? OnStatusChanged;
 
@@ -153,7 +153,7 @@ namespace MaxwellBoost.CoreAudio
                         if (wasDisconnected || logStateChanges)
                         {
                             _logger.Info($"Maxwell Connected & Boosted! Target: [{foundDevice.FriendlyName}], Gain: +{_settings.GainDb} dB, Volume: {volLevel:P0}");
-                            OnDeviceBoosted?.Invoke(foundDevice, volLevel);
+                            OnDeviceBoosted?.Invoke(foundDevice, volLevel, wasDisconnected);
                             OnStatusChanged?.Invoke($"Connected (+{_settings.GainDb} dB)");
                         }
                     }

@@ -13,7 +13,7 @@ namespace MaxwellBoost.Config
         public string LogDirectory { get; set; } = @"C:\logs";
         public string LogFileName { get; set; } = "maxwell.log";
         public int LogRetentionDays { get; set; } = 7;
-        public bool ShowNotifications { get; set; } = true;
+        public bool ShowNotifications { get; set; } = false;
         public int PollingFallbackSeconds { get; set; } = 10;
         public string EqualizerApoConfigPath { get; set; } = @"C:\Program Files\EqualizerAPO\config\config.txt";
 

@@ -95,8 +95,9 @@ The millisecond your Audeze Maxwell powers on or reconnects, MaxwellBoost:
 - **🔄 Auto-Reconnect & Reboot Persistence**: Automatically detects headset power-on and wake events in milliseconds.
 - **🎚️ Interactive Quick Menu Gain Slider**:
   - Drag the built-in slider (0 to 40 dB) right inside the tray context menu to adjust your gain instantly.
-  - Or click **Set Custom Gain (dB)...** to type any precise decimal value (e.g. `22.5` dB).
-- **🔔 Notification Toggle**: Enable or disable Windows toast notifications directly from the tray right-click menu (`Show Toast Notifications [✓]`).
+  - Or click **Set Custom Gain (dB)...** to type any precise decimal value (e.g. `18.5` dB).
+  - **Zero Popups on Adjustment**: Adjusting the gain slider or boost level updates silently without toast notifications.
+- **🔔 Optional Notifications (Off by Default)**: Enable or disable Windows toast notifications directly from the tray right-click menu (`Show Toast Notifications [✓]`).
 - **🖥️ System Tray Monitor**:
   - 🟢 **Green Microphone**: Maxwell is Connected & Boosted (+20 dB active, 100% volume).
   - ⚪ **Grey Microphone**: Headset is Off / Standby Watcher active.
@@ -154,12 +155,12 @@ Right-click the microphone icon in your Windows notification area (near the cloc
 | Menu Item | Action |
 |---|---|
 | **Status / Volume** | Live connection state (e.g. `Connected (+20 dB)`) and Windows endpoint volume level |
-| **Gain Slider (0–40 dB)** | Drag to increase or decrease mic volume gain in real time |
+| **Gain Slider (0–40 dB)** | Drag to increase or decrease mic volume gain silently in real time |
 | **✏️ Set Custom Gain...** | Opens an input dialog to specify any exact gain value (e.g. `18.5` dB) |
 | **⚡ Re-apply Boost Now** | Forces an immediate scan, settings reload, and APO stream re-bind |
 | **📄 Open Log File** | Opens `C:\logs\maxwell.log` in your default text editor |
 | **⚙️ Open Settings** | Opens `appsettings.json` for manual configuration |
-| **Show Toast Notifications [✓]** | Toggles Windows connect/disconnect balloon toast popups on or off |
+| **Show Toast Notifications [✓]** | Toggles Windows connect/disconnect balloon toast popups on or off (disabled by default) |
 | **Run on Windows Startup [✓]** | Toggles automatic launch on Windows login |
 | **❌ Exit MaxwellBoost** | Disables tray icon and cleanly exits |
 
@@ -178,7 +179,7 @@ Configuration is stored in `publish\Config\appsettings.json` (or `src\Config\app
   "LogDirectory": "C:\\logs",
   "LogFileName": "maxwell.log",
   "LogRetentionDays": 7,
-  "ShowNotifications": true,
+  "ShowNotifications": false,
   "PollingFallbackSeconds": 10,
   "EqualizerApoConfigPath": "C:\\Program Files\\EqualizerAPO\\config\\config.txt"
 }
@@ -195,7 +196,7 @@ Configuration is stored in `publish\Config\appsettings.json` (or `src\Config\app
 | **`LogDirectory`** | `string` | `"C:\\logs"` | Directory where operational logs are written. If the directory does not exist, MaxwellBoost will create it automatically. |
 | **`LogFileName`** | `string` | `"maxwell.log"` | The active log file name. All connection events, gain updates, and errors are recorded here. |
 | **`LogRetentionDays`** | `int` | `7` | Number of days to retain rotated daily log archives (`maxwell-YYYY-MM-DD.log`). Files matching this pattern older than `LogRetentionDays` are automatically cleaned up at midnight. |
-| **`ShowNotifications`** | `bool` | `true` | When `true`, displays Windows balloon toast notifications when the Audeze Maxwell headset connects (boost active) or disconnects (standby). Can also be toggled directly from the tray menu. |
+| **`ShowNotifications`** | `bool` | `false` | When `true`, displays Windows balloon toast notifications when the Audeze Maxwell headset connects or disconnects. Notifications are never displayed on volume or gain changes. Defaults to `false`. |
 | **`PollingFallbackSeconds`** | `int` | `10` | Frequency in seconds for secondary background state verification. Ensures device reconnection is caught even if Windows COM event notifications are dropped during OS sleep or hibernate resume. |
 | **`EqualizerApoConfigPath`** | `string` | `@"C:\Program Files\EqualizerAPO\config\config.txt"` | Absolute file path to the Equalizer APO `config.txt` file where MaxwellBoost injects the device preamp directive. |
 

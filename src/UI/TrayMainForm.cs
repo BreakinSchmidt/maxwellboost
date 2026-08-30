@@ -122,7 +122,7 @@ namespace MaxwellBoost.UI
             _notifyIcon.DoubleClick += (s, e) => OpenLogFile();
 
             // Subscribe to watcher events with thread-safe UI invocation
-            _watcher.OnDeviceBoosted += (dev, vol) => SafeInvoke(() => HandleDeviceBoosted(dev, vol));
+            _watcher.OnDeviceBoosted += (dev, vol, isInitial) => SafeInvoke(() => HandleDeviceBoosted(dev, vol, isInitial));
             _watcher.OnDeviceDisconnected += (devName) => SafeInvoke(() => HandleDeviceDisconnected(devName));
             _watcher.OnStatusChanged += (status) => SafeInvoke(() => HandleStatusChanged(status));
 
@@ -240,7 +240,7 @@ namespace MaxwellBoost.UI
             }
         }
 
-        private void HandleDeviceBoosted(AudioDeviceInfo device, float volume)
+        private void HandleDeviceBoosted(AudioDeviceInfo device, float volume, bool isInitialConnect)
         {
             if (_notifyIcon == null || IsDisposed) return;
 
@@ -255,12 +255,13 @@ namespace MaxwellBoost.UI
                 _volumeMenuItem.Text = $"Volume: {volume:P0} (Enforced)";
                 _gainSlider.SliderControl.SetGain(_settings.GainDb);
 
-                if (_settings.ShowNotifications)
+                // ONLY show toast notification when the device actually performs an initial connection, NEVER on gain changes
+                if (isInitialConnect && _settings.ShowNotifications)
                 {
                     _notifyIcon.ShowBalloonTip(
                         3000,
                         "Audeze Maxwell Connected",
-                        $"Amplified microphone by +{_settings.GainDb:0.#} dB (Volume: {volume:P0})",
+                        $"Microphone active (+{_settings.GainDb:0.#} dB)",
                         ToolTipIcon.Info);
                 }
             }
@@ -284,6 +285,7 @@ namespace MaxwellBoost.UI
                 _statusMenuItem.Text = "Status: Disconnected (Standby)";
                 _volumeMenuItem.Text = "Volume: N/A";
 
+                // ONLY show toast notification on disconnection if explicitly enabled
                 if (_settings.ShowNotifications)
                 {
                     _notifyIcon.ShowBalloonTip(
