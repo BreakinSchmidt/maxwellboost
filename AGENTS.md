@@ -54,7 +54,6 @@ D:\code\maxwellboost/
 │   └── UI/
 │       ├── Icons.cs              # Managed PNG-in-ICO dynamic high-DPI microphone icon generator
 │       ├── GainSliderControl.cs  # Embedded ToolStrip TrackBar slider (0–40 dB)
-│       ├── CustomGainDialog.cs   # Custom decimal gain input dialog form
 │       └── TrayMainForm.cs       # Invisible Form message pump, NotifyIcon, context menu, FileSystemWatcher
 └── scripts/                      # PowerShell deployment & automation scripts
     ├── build.ps1                 # Builds and publishes release binary to publish/

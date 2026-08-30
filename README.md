@@ -94,9 +94,7 @@ The millisecond your Audeze Maxwell powers on or reconnects, MaxwellBoost:
 - **🎯 Zero App Reconfiguration**: All applications (Discord, Zoom, Teams, OBS, Games) capture directly from `Microphone (Chat-Audeze Maxwell)`.
 - **🔄 Auto-Reconnect & Reboot Persistence**: Automatically detects headset power-on and wake events in milliseconds.
 - **🎚️ Interactive Quick Menu Gain Slider**:
-  - Drag the built-in slider (0 to 40 dB) right inside the tray context menu to adjust your gain instantly.
-  - Or click **Set Custom Gain (dB)...** to type any precise decimal value (e.g. `18.5` dB).
-  - **Zero Popups on Adjustment**: Adjusting the gain slider or boost level updates silently without toast notifications.
+  - Drag the built-in slider (0 to 40 dB) right inside the tray context menu to adjust your gain silently in real time.
 - **🔔 Optional Notifications (Off by Default)**: Enable or disable Windows toast notifications directly from the tray right-click menu (`Show Toast Notifications [✓]`).
 - **🖥️ System Tray Monitor**:
   - 🟢 **Green Microphone**: Maxwell is Connected & Boosted (+20 dB active, 100% volume).
@@ -156,7 +154,6 @@ Right-click the microphone icon in your Windows notification area (near the cloc
 |---|---|
 | **Status / Volume** | Live connection state (e.g. `Connected (+20 dB)`) and Windows endpoint volume level |
 | **Gain Slider (0–40 dB)** | Drag to increase or decrease mic volume gain silently in real time |
-| **✏️ Set Custom Gain...** | Opens an input dialog to specify any exact gain value (e.g. `18.5` dB) |
 | **⚡ Re-apply Boost Now** | Forces an immediate scan, settings reload, and APO stream re-bind |
 | **📄 Open Log File** | Opens `C:\logs\maxwell.log` in your default text editor |
 | **⚙️ Open Settings** | Opens `appsettings.json` for manual configuration |

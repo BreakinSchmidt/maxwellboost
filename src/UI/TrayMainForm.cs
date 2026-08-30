@@ -72,10 +72,6 @@ namespace MaxwellBoost.UI
             // 3. Interactive Gain Slider (0 to 40 dB)
             _gainSlider = new ToolStripGainSlider(_settings, OnSliderGainChanged);
             _contextMenu.Items.Add(_gainSlider);
-
-            var customGainItem = new ToolStripMenuItem("✏️ Set Custom Gain (dB)...", null, (s, e) => OpenCustomGainDialog());
-            _contextMenu.Items.Add(customGainItem);
-
             _contextMenu.Items.Add(new ToolStripSeparator());
 
             // 4. Quick Actions
@@ -143,20 +139,6 @@ namespace MaxwellBoost.UI
             _settings.GainDb = newGain;
             _settings.Save();
             _watcher.SyncCurrentState(logStateChanges: true);
-        }
-
-        private void OpenCustomGainDialog()
-        {
-            using var dialog = new CustomGainDialog(_settings.GainDb);
-            if (dialog.ShowDialog(this) == DialogResult.OK)
-            {
-                var newGain = dialog.SelectedGain;
-                _logger.Info($"User entered custom gain in dialog: +{newGain:0.#} dB.");
-                _settings.GainDb = newGain;
-                _gainSlider.SliderControl.SetGain(newGain);
-                _settings.Save();
-                _watcher.SyncCurrentState(logStateChanges: true);
-            }
         }
 
         private void ToggleNotifications()
