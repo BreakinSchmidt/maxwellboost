@@ -1,0 +1,16 @@
+## Build and Output Folders
+bin/
+obj/
+publish/
+
+## Visual Studio & Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Log and temporary files
+*.log
+*.tmp
